@@ -8,6 +8,14 @@ export type CourseRecord = {
   estimatedHours: number;
   completedHours: number;
   materials: string[];
+  contentType?: "calculation" | "theory" | "mixed";
+  analysis?: CourseAnalysis;
+};
+
+export type CourseAnalysis = {
+  summary: string;
+  totalQuestions: number;
+  topics: Array<{ name: string; kind: "theory" | "calculation" | "mixed"; frequency: number; years: string[]; patterns: string[]; questions: Array<{ year: string; question: string }> }>;
 };
 
 export type StudentData = {
@@ -15,10 +23,6 @@ export type StudentData = {
   onboardingComplete: boolean;
   name: string;
   email: string;
-  phone: string;
-  dateOfBirth: string;
-  gender: string;
-  country: string;
   school: string;
   degree: string;
   level: string;
@@ -36,10 +40,6 @@ export const initialStudentData: StudentData = {
   onboardingComplete: false,
   name: "",
   email: "",
-  phone: "",
-  dateOfBirth: "",
-  gender: "",
-  country: "Nigeria",
   school: "",
   degree: "",
   level: "",

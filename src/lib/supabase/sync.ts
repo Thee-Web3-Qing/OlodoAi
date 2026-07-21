@@ -7,8 +7,7 @@ export async function syncStudentData(data: StudentData) {
   const { data: auth } = await supabase.auth.getUser();
   if (!auth.user) return;
   await supabase.from("profiles").upsert({
-    id: auth.user.id, email: data.email, name: data.name, phone: data.phone,
-    date_of_birth: data.dateOfBirth || null, gender: data.gender, country: data.country,
+    id: auth.user.id, email: data.email, name: data.name,
     school: data.school, degree: data.degree, level: data.level, target_grade: data.targetGrade,
     study_mode: data.studyMode, available_hours: data.availableHours,
     preferred_start: data.preferredStart, study_days: data.studyDays,
@@ -18,5 +17,7 @@ export async function syncStudentData(data: StudentData) {
     id: course.id, user_id: auth.user!.id, code: course.code, title: course.title,
     exam_date: course.examDate || null, estimated_hours: course.estimatedHours,
     completed_hours: course.completedHours,
+    content_type: course.contentType ?? "mixed",
+    analysis: course.analysis ?? null,
   })), { onConflict: "id" });
 }

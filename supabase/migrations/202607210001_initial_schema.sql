@@ -4,10 +4,6 @@ create table if not exists public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
   email text,
   name text not null default '',
-  phone text default '',
-  date_of_birth date,
-  gender text default '',
-  country text default 'Nigeria',
   school text default '',
   degree text default '',
   level text default '',
@@ -29,6 +25,8 @@ create table if not exists public.courses (
   exam_date timestamptz,
   estimated_hours numeric default 12,
   completed_hours numeric default 0,
+  content_type text not null default 'mixed' check (content_type in ('calculation', 'theory', 'mixed')),
+  analysis jsonb,
   created_at timestamptz default now(),
   unique(user_id, code)
 );
