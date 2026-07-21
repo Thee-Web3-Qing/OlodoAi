@@ -15,6 +15,10 @@ export type StudentData = {
   onboardingComplete: boolean;
   name: string;
   email: string;
+  phone: string;
+  dateOfBirth: string;
+  gender: string;
+  country: string;
   school: string;
   degree: string;
   level: string;
@@ -32,6 +36,10 @@ export const initialStudentData: StudentData = {
   onboardingComplete: false,
   name: "",
   email: "",
+  phone: "",
+  dateOfBirth: "",
+  gender: "",
+  country: "Nigeria",
   school: "",
   degree: "",
   level: "",

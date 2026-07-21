@@ -6,3 +6,7 @@ export function createBrowserSupabaseClient() {
   if (!url || !key) throw new Error("Supabase is not configured.");
   return createClient(url, key);
 }
+
+export function isSupabaseConfigured() {
+  return Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+}
