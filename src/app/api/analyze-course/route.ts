@@ -1,20 +1,6 @@
 import { NextResponse } from "next/server";
-import { z } from "zod";
 import { createAiClient } from "@/lib/ai/client";
 import { env } from "@/lib/env";
-
-const schema=z.object({courseCode:z.string(),courseTitle:z.string(),documents:z.array(z.object({name:z.string(),text:z.string()})).min(1)});
-
-export async function POST(request:Request){
-  try{
-    const input=schema.parse(await request.json());
-    const source=input.documents.map(d=>`\n--- FILE: ${d.name} ---\n${d.text}`).join("").slice(0,120000);
-    const response=await createAiClient().chat.completions.create({
-      model:env.AI_MODEL||"qwen-plus",response_format:{type:"json_object"},
-      messages:[{role:"system",content:`You analyse university past-question documents. Return JSON only: {"summary":"","totalQuestions":0,"topics":[{"name":"","kind":"theory|calculation|mixed","frequency":0,"years":["2024"],"patterns":[""],"questions":[{"year":"2024","question":""}]}]}. Extract every identifiable question, infer the year from headings or filenames, group questions under accurate syllabus topics, and identify repeated wording, concepts, formula routes, and examiner patterns. Sort topics by frequency. Do not invent questions.`},{role:"user",content:`Course: ${input.courseCode} - ${input.courseTitle}\n${source}`}]
-    });
-    const content=response.choices[0]?.message?.content;
-    if(!content)throw new Error("Qwen returned no course analysis.");
-    return NextResponse.json(JSON.parse(content));
-  }catch(error){return NextResponse.json({error:error instanceof Error?error.message:"Course analysis failed."},{status:400})}
-}
+export const runtime="nodejs";
+async function readFile(file:File){if(file.size>20*1024*1024)throw new Error(`${file.name} is over 20 MB. Compress or split it first.`);if(file.type.startsWith("text/")||/\.(txt|csv|md)$/i.test(file.name))return file.text();const base64=Buffer.from(await file.arrayBuffer()).toString("base64"),dataUrl=`data:${file.type||"application/pdf"};base64,${base64}`;const response=await fetch(`${env.AI_BASE_URL}/responses`,{method:"POST",headers:{Authorization:`Bearer ${env.AI_API_KEY}`,"Content-Type":"application/json"},body:JSON.stringify({model:env.OCR_MODEL||"qwen3.5-ocr",input:[{role:"user",content:[{type:"input_file",filename:file.name,file_data:dataUrl},{type:"input_text",text:"Extract this entire university past-question paper. Preserve the exam year, question numbers, subquestions, formulas, symbols, tables and marks. Return plain text only."}]}]})});const value=await response.json();if(!response.ok)throw new Error(value?.error?.message||`OCR could not read ${file.name}.`);const direct=value.output_text as string|undefined,nested=(value.output as Array<{content?:Array<{text?:string}>}>|undefined)?.flatMap(x=>x.content||[]).map(x=>x.text||"").join("\n"),text=direct||nested;if(!text)throw new Error(`No readable questions were found in ${file.name}.`);return text;}
+export async function POST(request:Request){try{if(!env.AI_API_KEY)throw new Error("Qwen is not configured on the server.");const form=await request.formData(),courseCode=String(form.get("courseCode")||""),courseTitle=String(form.get("courseTitle")||""),files=form.getAll("files").filter((item):item is File=>item instanceof File);if(!courseCode||!courseTitle||!files.length)throw new Error("Course details and at least one past-question file are required.");const documents=await Promise.all(files.map(async file=>({name:file.name,text:await readFile(file)}))),source=documents.map(d=>`\n--- FILE: ${d.name} ---\n${d.text}`).join("").slice(0,120000);const response=await createAiClient().chat.completions.create({model:env.AI_MODEL||"qwen-plus",response_format:{type:"json_object"},messages:[{role:"system",content:`Analyse university past-question papers. Return JSON only: {"summary":"","totalQuestions":0,"topics":[{"name":"","kind":"theory|calculation|mixed","frequency":0,"years":["2024"],"patterns":[""],"questions":[{"year":"2024","question":"full original question including subparts"}]}]}. Extract every identifiable numbered question, preserve its wording, group it under the correct syllabus topic, infer year from the paper or filename, and identify repeated concepts or formula routes. Each questions array must contain the actual questions from the uploaded papers, never examples you invent. Sort topics by exam frequency.`},{role:"user",content:`Course: ${courseCode} - ${courseTitle}\n${source}`} ]});const content=response.choices[0]?.message?.content;if(!content)throw new Error("Qwen returned no course analysis.");return NextResponse.json(JSON.parse(content));}catch(error){return NextResponse.json({error:error instanceof Error?error.message:"Course analysis failed."},{status:400})}}

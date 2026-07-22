@@ -15,8 +15,8 @@ export default function CourseLesson(){
   async function analyse(){
     if(!files.length)return;setBusy(true);setError("");
     try{
-      const documents=await Promise.all(files.map(async file=>({name:file.name,text:await file.text()})));
-      const response=await fetch("/api/analyze-course",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({courseCode:course!.code,courseTitle:course!.title,documents})});
+      const form=new FormData();form.append("courseCode",course!.code);form.append("courseTitle",course!.title);files.forEach(file=>form.append("files",file));
+      const response=await fetch("/api/analyze-course",{method:"POST",body:form});
       const value=await response.json();if(!response.ok)throw new Error(value.error||"Analysis failed.");
       update({courses:data.courses.map(c=>c.id===id?{...c,materials:[...new Set([...c.materials,...files.map(f=>f.name)])],analysis:value as CourseAnalysis}:c)});
     }catch(e){setError(e instanceof Error?e.message:"Analysis failed.")}finally{setBusy(false)}
